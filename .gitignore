@@ -1,0 +1,5 @@
+*.deb
+*.iso
+vyos-build
+packages.txt
+.idea
