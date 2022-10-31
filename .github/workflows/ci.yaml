@@ -67,7 +67,7 @@ jobs:
           name: vyos-${{ env.version }}
           path: vyos-${{ env.version }}.iso
 
-      - uses: alexellis/upload-assets@0.3.0
+      - uses: alexellis/upload-assets@0.4.0
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ github.token }}
