@@ -67,10 +67,21 @@ jobs:
           name: vyos-${{ env.version }}
           path: vyos-${{ env.version }}.iso
 
-      - uses: alexellis/upload-assets@0.3.0
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["vyos-${{ env.version }}.iso"]'
+      - name: Checksums
+        id: checksums
+        run: |
+          echo "md5sum=$(md5sum vyos-${{ env.version }}.iso)" >> $GITHUB_OUTPUT
+          echo "sha256sum=$(sha256sum vyos-${{ env.version }}.iso)" >> $GITHUB_OUTPUT
+          echo "sha512sum=$(sha512sum vyos-${{ env.version }}.iso)" >> $GITHUB_OUTPUT
 
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: vyos-${{ env.version }}.iso
+          body: |
+            | Digest | Checksum |
+            |--------|----------|
+            | md5    | ${{ steps.run_tests.outputs.md5sum }} |
+            | sha256 | ${{ steps.run_tests.outputs.sha256sum }} |
+            | sha512 | ${{ steps.run_tests.outputs.sha512sum }} |
+          append_body: true
