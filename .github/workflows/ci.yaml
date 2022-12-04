@@ -70,9 +70,9 @@ jobs:
       - name: Checksums
         id: checksums
         run: |
-          echo "md5sum=$(md5sum vyos-${{ env.version }}.iso)" >> $GITHUB_OUTPUT
-          echo "sha256sum=$(sha256sum vyos-${{ env.version }}.iso)" >> $GITHUB_OUTPUT
-          echo "sha512sum=$(sha512sum vyos-${{ env.version }}.iso)" >> $GITHUB_OUTPUT
+          echo "md5sum=$(md5sum vyos-${{ env.version }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "sha256sum=$(sha256sum vyos-${{ env.version }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "sha512sum=$(sha512sum vyos-${{ env.version }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
 
       - uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
