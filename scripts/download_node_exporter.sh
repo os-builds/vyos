@@ -1,19 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
-version="1.5.0"
-wget -O- https://github.com/prometheus/node_exporter/releases/download/v${version}/node_exporter-${version}.linux-amd64.tar.gz | tar xzC /opt/
+version="1.5.0-1"
+url="https://github.com/pkgs-hub/vyatta-node_exporter/releases/download/v${version}/vyatta-node-exporter_${version}_amd64.deb"
 
-touch /etc/default/node_exporter
-cat <<_EOF > /etc/systemd/system/node_exporter.service
-[Unit]
-Description=Node Exporter
+output="$(pwd)/$(basename "${url}")"
 
-[Service]
-EnvironmentFile=/etc/default/node_exporter
-ExecStart=/opt/node_exporter-${version}.linux-amd64/node_exporter \$OPTIONS
+echo "[${0}] Downloading ${url}..."
+curl -s -L "${url}" -o "${output}"
 
-[Install]
-WantedBy=multi-user.target
-_EOF
-
-systemd daemon-reload
+echo "[${0}] Adding ${output} to pending packages..."
+echo "${output}" >>packages.txt
