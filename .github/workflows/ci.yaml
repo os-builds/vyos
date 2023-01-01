@@ -81,7 +81,7 @@ jobs:
           body: |
             | Digest | Checksum |
             |--------|----------|
-            | md5    | ${{ steps.checksums.outputs.md5sum }} |
-            | sha256 | ${{ steps.checksums.outputs.sha256sum }} |
-            | sha512 | ${{ steps.checksums.outputs.sha512sum }} |
+            | md5    | `${{ steps.checksums.outputs.md5sum }}` |
+            | sha256 | `${{ steps.checksums.outputs.sha256sum }}` |
+            | sha512 | `${{ steps.checksums.outputs.sha512sum }}` |
           append_body: true
