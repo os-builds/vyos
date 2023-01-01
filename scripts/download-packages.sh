@@ -2,14 +2,20 @@
 
 # this script downloads our vyatta packages from github.com/pkgs-hub
 declare -A packages=(
-  ["node_exporter"]="1.5.0-2"
-   ["frr_exporter"]="1.1.4-2"
-     ["zia-server"]="0.2.5-1"
+  ["node_exporter"]="latest"
+   ["frr_exporter"]="latest"
+     ["zia-server"]="latest"
 )
 
 for package in ${!packages[@]}; do
   version=${packages[$package]}
-  url="https://github.com/pkgs-hub/vyatta-${package}/releases/download/v${version}/vyatta-${package}_${version}_amd64.deb"
+
+  if [ "${version}" == "latest" ]; then
+    url=$(curl -s "https://api.github.com/repos/pkgs-hub/vyatta-${package}/releases/latest" |\
+      jq -r '.assets[] | select(.name | contains("amd64.deb")) | .browser_download_url')
+  else
+    url="https://github.com/pkgs-hub/vyatta-${package}/releases/download/v${version}/vyatta-${package}_${version}_amd64.deb"
+  fi
   output="$(pwd)/$(basename "${url}")"
 
   echo "[${0}] Downloading ${url}..."
