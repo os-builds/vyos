@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-version="1.5.0-2"
+version="1.5.0"
 url="https://github.com/pkgs-hub/vyatta-node_exporter/releases/download/v${version}/vyatta-node-exporter_${version}_amd64.deb"
 
 output="$(pwd)/$(basename "${url}")"
