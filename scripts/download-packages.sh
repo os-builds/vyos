@@ -2,9 +2,9 @@
 
 # this script downloads our vyatta packages from github.com/pkgs-hub
 declare -A packages=(
-  ["node_exporter"]="1.5.0"
-   ["frr_exporter"]="1.1.4"
-     ["zia-server"]="0.2.5"
+  ["node_exporter"]="1.5.0-2"
+   ["frr_exporter"]="1.1.4-2"
+     ["zia-server"]="0.2.5-1"
 )
 
 for package in ${!packages[@]}; do
