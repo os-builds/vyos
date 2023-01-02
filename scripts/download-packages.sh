@@ -18,7 +18,7 @@ for package in ${!packages[@]}; do
   fi
   output="$(pwd)/$(basename "${url}")"
 
-  echo "[${0}] Downloading ${url}..."
+  echo "[${0}] Downloading ${package}:${version} from ${url}..."
   curl -s -L "${url}" -o "${output}"
 
   echo "[${0}] Adding ${output} to pending packages..."
