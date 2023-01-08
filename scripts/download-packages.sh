@@ -20,7 +20,12 @@ for package in ${!packages[@]}; do
 
   echo "[${0}] Downloading ${package}:${version} from ${url}..."
   curl -s -L "${url}" -o "${output}"
+  success=${?}
 
-  echo "[${0}] Adding ${output} to pending packages..."
-  echo "${output}" >> packages.txt
+  if [[ ${success} -eq 0 ]]; then
+    echo "[${0}] Adding ${output} to pending packages..."
+    echo "${output}" >> packages.txt
+  else
+    echo "[${0}] Download failed!"
+  fi
 done
