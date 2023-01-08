@@ -52,7 +52,7 @@ jobs:
       - name: Prepare custom packages
         run: |
           for deb in $(cat packages.txt); do
-            mv ${deb} vyos-build/packages/${deb}
+            mv ${deb} vyos-build/packages/
           done
 
       - name: Build ISO
