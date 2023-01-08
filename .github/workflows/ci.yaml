@@ -49,9 +49,6 @@ jobs:
         working-directory: vyos-build
         run: ./configure --architecture amd64 --build-by "https://github.com/os-builds" --build-type release --version ${{ env.version }}
       
-      - run: cat packages.txt
-      - run: find vyos-build/packages/
-
       - name: Prepare custom packages
         run: |
           for deb in $(cat packages.txt); do
