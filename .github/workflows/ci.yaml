@@ -48,7 +48,7 @@ jobs:
       - name: Configure
         working-directory: vyos-build
         run: ./configure --architecture amd64 --build-by "https://github.com/os-builds" --build-type release --version ${{ env.version }}
-      
+
       - name: Prepare custom packages
         run: |
           for deb in $(cat packages.txt); do
@@ -85,3 +85,45 @@ jobs:
             | sha256 | `${{ steps.checksums.outputs.sha256sum }}` |
             | sha512 | `${{ steps.checksums.outputs.sha512sum }}` |
           append_body: true
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [ build ]
+
+    permissions:
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate Version
+        run: |
+          if [[ ${{ startsWith(github.ref, 'refs/tags/') }} == 'true' ]]; then 
+            echo "version=${{ github.ref_name }}" >>$GITHUB_ENV
+          else
+            echo "version=${{ env.version }}-dev-$(echo ${{ github.sha }} | cut -c 1-8)" >>$GITHUB_ENV
+          fi
+
+      - name: Download a single artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: vyos-${{ env.version }}
+
+      - name: Convert ISO to OCI Image
+        run: |
+          sudo mount -o loop vyos-${{ env.version }}.iso rootfs
+          sudo apt-get install -y squashfs-tools
+          mkdir unsquashfs
+          sudo unsquashfs -f -d unsquashfs/ rootfs/live/filesystem.squashfs
+          sudo tar -C unsquashfs -c . | docker import - ghcr.io/${{ github.repository_owner }}/vyos:${{ env.version }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Push image
+        run: docker push ghcr.io/${{ github.repository_owner }}/vyos:${{ env.version }}
