@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
-version="0.2.8-1"
-url="https://github.com/pkgs-hub/vyatta-zia-server/releases/download/v${version}/vyatta-zia-server_${version}_amd64.deb"
+version="1.1.4-1"
+url="https://github.com/pkgs-hub/vyatta-frr_exporter/releases/download/v${version}/vyatta-frr-exporter_${version}_amd64.deb"
 
 output="$(pwd)/$(basename "${url}")"
 
