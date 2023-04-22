@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 version="0.0.1"
-url="https://github.com/pkgs-hub/vyatta-web/releases/download/v${version}/vyatta-web${version}_amd64.deb"
+url="https://github.com/pkgs-hub/vyatta-web/releases/download/v${version}/vyatta-web_${version}_amd64.deb"
 
 output="$(pwd)/$(basename "${url}")"
 
