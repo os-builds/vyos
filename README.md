@@ -2,7 +2,7 @@
 
 This repository provides a live build environment for [VyOS](https://github.com/vyos/vyos-build) using Github Actions.
 
-## Update VyOS
+## Upgrade VyOS
 
 Update `env.version` in `.github/workflows/ci.yaml`.
 
