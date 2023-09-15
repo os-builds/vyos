@@ -74,7 +74,7 @@ jobs:
           echo "sha256sum=$(sha256sum vyos-${{ env.version }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
           echo "sha512sum=$(sha512sum vyos-${{ env.version }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
 
-      - uses: softprops/action-gh-release@v1
+      - uses: crazy-max/ghaction-github-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: vyos-${{ env.version }}.iso
