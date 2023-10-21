@@ -1,83 +1,143 @@
+---
 name: CI
 
 on:
   push:
-    branches: [ equuleus ]
-    tags: [ '1.3*' ]
+    branches: [ main ]
+    tags: [ '*' ]
   pull_request:
-    branches: [ equuleus ]
+    branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  version: 1.3.3
-  branch: equuleus
-
 jobs:
+  # see https://docs.vyos.io/en/latest/contributing/build-vyos.html
   build:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
+    strategy:
+      matrix:
+        version:
+          - number: "1.3"
+            architecture: amd64
+            code: equuleus
+            branch: equuleus
+            docker-tag: equuleus
+
+          - number: "1.4"
+            architecture: amd64
+            code: sagitta
+            branch: sagitta
+            docker-tag: sagitta
+
+          # TODO doesn't work
+          #- number: "1.4"
+          #  architecture: arm64
+          #  code: sagitta
+          #  branch: sagitta
+          #  docker-tag: sagitta-arm64
+
+          - number: "1.5"
+            architecture: amd64
+            code: circinus
+            branch: current
+            docker-tag: current
+
+          # TODO doesn't work
+          #- number: "1.5"
+          #  architecture: arm64
+          #  code: circinus
+          #  branch: current
+          #  docker-tag: current-arm64
+
     container:
-      image: vyos/vyos-build:equuleus
+      image: vyos/vyos-build:${{ matrix.version.docker-tag }}
       volumes:
         - /proc:/proc
-      options: --privileged
+      options: --privileged --platform=linux/${{ matrix.version.architecture }}
 
     steps:
       - uses: actions/checkout@v4
 
+      # if git tag is being processed (for release) terminate execution of unnessesary workflows 
+      - name: "If executed for release: Terminate unnessesary workflows"
+        if: ${{ startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref_name, matrix.version.number) }}
+        run: echo "skip=1" >>$GITHUB_ENV
+
+      # TODO check if working...
       - name: Generate Version
+        if: ${{ !env.skip }}
         run: |
           if [[ ${{ startsWith(github.ref, 'refs/tags/') }} == 'true' ]]; then 
-            echo "version=${{ github.ref_name }}" >>$GITHUB_ENV
+            echo "matrix.version.number=${{ github.ref_name }}" >>$GITHUB_ENV
           else
-            echo "version=${{ env.version }}-dev-$(echo ${{ github.sha }} | cut -c 1-8)" >>$GITHUB_ENV
+            echo "matrix.version.number=${{ matrix.version.number }}-dev-$(echo ${{ github.sha }} | cut -c 1-8)" >>$GITHUB_ENV
           fi
 
       - name: Executing scripts
-        run: find scripts -name '*.sh' -exec bash {} \;
+        if: ${{ !env.skip }}
+        run: find scripts/${{ matrix.version.code }}/ -type f -name '*.sh' -exec bash {} \;
 
       - name: Clone Repository
-        run: git clone -b ${{ env.branch }} --single-branch --depth 1 https://github.com/vyos/vyos-build.git
+        if: ${{ !env.skip }}
+        run: git clone -b ${{ matrix.version.branch }} --single-branch --depth 1 https://github.com/vyos/vyos-build.git
 
-      - name: Configure
-        working-directory: vyos-build
-        run: ./configure --architecture amd64 --build-by "https://github.com/os-builds" --build-type release --version ${{ env.version }}
-
+      # Packages from VyOS 1.3 can't directly be used on VyOS >= 1.4,
+      # because the vyos config.py has to be adjusted (vyos.utils no longer exists)
+      # e. g. https://github.com/pkgs-hub/vyatta-node_exporter/blob/main/deb/opt/vyatta-node_exporter/config.py#L9
       - name: Prepare custom packages
+        if: ${{ !env.skip }}
         run: |
           for deb in $(cat packages.txt); do
             mv ${deb} vyos-build/packages/
           done
 
-      - name: Build ISO
+      - name: Configure and build ISO (until VyOS 1.3)
+        if: ${{ !env.skip && contains(fromJson('["crux", "equuleus"]'), matrix.version.code) }}
         working-directory: vyos-build
-        run: sudo make iso
+        run: |
+          ./configure --architecture ${{ matrix.version.architecture }} --build-by "https://github.com/os-builds" --build-type release --version ${{ matrix.version.number }}
+          sudo make iso
+
+      - name: Configure and build ISO (since VyOS 1.4)
+        if: ${{ !env.skip && contains(fromJson('["sagitta", "circinus"]'), matrix.version.code) }}
+        working-directory: vyos-build
+        run: ./build-vyos-image iso --architecture ${{ matrix.version.architecture }} --build-by "https://github.com/os-builds"
+
+      - name: Define filename
+        if: ${{ !env.skip }}
+        run: |
+          echo "filename=vyos-${{ matrix.version.number }}-${{ matrix.version.architecture }}" >>$GITHUB_ENV
 
       - name: Rename ISO
-        run: mv vyos-build/build/live-image-amd64.hybrid.iso vyos-${{ env.version }}.iso
+        if: ${{ !env.skip }}
+        run: mv vyos-build/build/live-image-${{ matrix.version.architecture }}.hybrid.iso ${{ env.filename }}.iso
 
-      - uses: actions/upload-artifact@v3
+      - name: Upload ISO
+        if: ${{ !env.skip }}
+        uses: actions/upload-artifact@v3
         with:
-          name: vyos-${{ env.version }}
-          path: vyos-${{ env.version }}.iso
+          name: ${{ env.filename }}
+          path: ${{ env.filename }}.iso
 
       - name: Checksums
+        if: ${{ !env.skip }}
         id: checksums
         run: |
-          echo "md5sum=$(md5sum vyos-${{ env.version }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          echo "sha256sum=$(sha256sum vyos-${{ env.version }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          echo "sha512sum=$(sha512sum vyos-${{ env.version }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "md5sum=$(md5sum ${{ env.filename }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "sha256sum=$(sha256sum ${{ env.filename }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "sha512sum=$(sha512sum ${{ env.filename }}.iso | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
 
-      - uses: crazy-max/ghaction-github-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: "Append iso file and calculated checksums to created release"
+        uses: crazy-max/ghaction-github-release@v2
+        if: ${{ !env.skip && startsWith(github.ref, 'refs/tags/') }}
         with:
-          files: vyos-${{ env.version }}.iso
+          files: ${{ env.filename }}.iso
           body: |
             | Digest | Checksum |
             |--------|----------|
@@ -89,37 +149,74 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: [ build ]
-    if: startsWith(github.ref, 'refs/tags/')
 
     permissions:
       packages: write
 
-    steps:
-      - uses: actions/checkout@v4
+    strategy:
+      matrix:
+        version:
+          - number: "1.3"
+            architecture: amd64
+            code: equuleus
+            branch: equuleus
+            docker-tag: equuleus
 
-      - name: Generate Version
+          - number: "1.4"
+            architecture: amd64
+            code: sagitta
+            branch: sagitta
+            docker-tag: sagitta
+
+          # TODO doesn't work
+          #- number: "1.4"
+          #  architecture: arm64
+          #  code: sagitta
+          #  branch: sagitta
+          #  docker-tag: sagitta-arm64
+
+          - number: "1.5"
+            architecture: amd64
+            code: circinus
+            branch: current
+            docker-tag: current
+
+          # TODO doesn't work
+          #- number: "1.5"
+          #  architecture: arm64
+          #  code: circinus
+          #  branch: current
+          #  docker-tag: current-arm64
+
+    steps:
+      # if git tag is being processed (for release) terminate execution of unnessesary workflows 
+      - name: "If executed for release: Terminate unnessesary workflows"
+        if: ${{ startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref_name, matrix.version.number) }}
+        run: echo "skip=1" >>$GITHUB_ENV
+
+      - name: Define filename
+        if: ${{ !env.skip }}
         run: |
-          if [[ ${{ startsWith(github.ref, 'refs/tags/') }} == 'true' ]]; then 
-            echo "version=${{ github.ref_name }}" >>$GITHUB_ENV
-          else
-            echo "version=${{ env.version }}-dev-$(echo ${{ github.sha }} | cut -c 1-8)" >>$GITHUB_ENV
-          fi
+          echo "filename=vyos-${{ matrix.version.number }}-${{ matrix.version.architecture }}" >>$GITHUB_ENV
 
       - name: Download a single artifact
+        if: ${{ !env.skip }}
         uses: actions/download-artifact@v3
         with:
-          name: vyos-${{ env.version }}
+          name: ${{ env.filename }}
 
       - name: Convert ISO to OCI Image
+        if: ${{ !env.skip }}
         run: |
           mkdir rootfs
-          sudo mount -o loop vyos-${{ env.version }}.iso rootfs
+          sudo mount -o loop ${{ env.filename }}.iso rootfs
           sudo apt-get install -y squashfs-tools
           mkdir unsquashfs
           sudo unsquashfs -f -d unsquashfs/ rootfs/live/filesystem.squashfs
-          sudo tar -C unsquashfs -c . | docker import - ghcr.io/${{ github.repository_owner }}/vyos:${{ env.version }}
+          sudo tar -C unsquashfs -c . | docker import - ghcr.io/${{ github.repository_owner }}/vyos:${{ matrix.version.number }}
 
       - name: Login to GitHub Container Registry
+        if: ${{ !env.skip && startsWith(github.ref, 'refs/tags/') }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -127,4 +224,5 @@ jobs:
           password: ${{ github.token }}
 
       - name: Push image
-        run: docker push ghcr.io/${{ github.repository_owner }}/vyos:${{ env.version }}
+        if: ${{ !env.skip && startsWith(github.ref, 'refs/tags/') }}
+        run: docker push ghcr.io/${{ github.repository_owner }}/vyos:${{ matrix.version.number }}
