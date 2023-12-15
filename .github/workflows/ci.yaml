@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload ISO
         if: ${{ !env.skip }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.filename }}
           path: ${{ env.filename }}.iso
