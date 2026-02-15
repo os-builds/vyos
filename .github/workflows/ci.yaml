@@ -23,37 +23,11 @@ jobs:
     strategy:
       matrix:
         version:
-          - number: "1.3"
-            architecture: amd64
-            code: equuleus
-            branch: equuleus
-            docker-tag: equuleus
-
-          - number: "1.4"
-            architecture: amd64
-            code: sagitta
-            branch: sagitta
-            docker-tag: sagitta
-
-          # TODO doesn't work
-          #- number: "1.4"
-          #  architecture: arm64
-          #  code: sagitta
-          #  branch: sagitta
-          #  docker-tag: sagitta-arm64
-
           - number: "1.5"
             architecture: amd64
             code: circinus
             branch: current
             docker-tag: current
-
-          # TODO doesn't work
-          #- number: "1.5"
-          #  architecture: arm64
-          #  code: circinus
-          #  branch: current
-          #  docker-tag: current-arm64
 
     container:
       image: vyos/vyos-build:${{ matrix.version.docker-tag }}
@@ -62,7 +36,7 @@ jobs:
       options: --privileged --platform=linux/${{ matrix.version.architecture }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # if git tag is being processed (for release) terminate execution of unnessesary workflows 
       - name: "If executed for release: Terminate unnessesary workflows"
@@ -73,15 +47,15 @@ jobs:
       - name: Generate Version
         if: ${{ !env.skip }}
         run: |
-          if [[ ${{ startsWith(github.ref, 'refs/tags/') }} == 'true' ]]; then 
+          if [ ${{ startsWith(github.ref, 'refs/tags/') }} == 'true' ]; then
             echo "matrix.version.number=${{ github.ref_name }}" >>$GITHUB_ENV
           else
             echo "matrix.version.number=${{ matrix.version.number }}-dev-$(echo ${{ github.sha }} | cut -c 1-8)" >>$GITHUB_ENV
           fi
 
-      - name: Executing scripts
-        if: ${{ !env.skip }}
-        run: find scripts/${{ matrix.version.code }}/ -type f -name '*.sh' -exec bash {} \;
+      #- name: Executing scripts
+      #  if: ${{ !env.skip }}
+      #  run: find scripts/${{ matrix.version.code }}/ -type f -name '*.sh' -exec bash {} \;
 
       - name: Clone Repository
         if: ${{ !env.skip }}
@@ -90,24 +64,17 @@ jobs:
       # Packages from VyOS 1.3 can't directly be used on VyOS >= 1.4,
       # because the vyos config.py has to be adjusted (vyos.utils no longer exists)
       # e. g. https://github.com/pkgs-hub/vyatta-node_exporter/blob/main/deb/opt/vyatta-node_exporter/config.py#L9
-      - name: Prepare custom packages
-        if: ${{ !env.skip }}
-        run: |
-          for deb in $(cat packages.txt); do
-            mv ${deb} vyos-build/packages/
-          done
+      #- name: Prepare custom packages
+      #  if: ${{ !env.skip }}
+      #  run: |
+      #    for deb in $(cat packages.txt); do
+      #      mv ${deb} vyos-build/packages/
+      #    done
 
-      - name: Configure and build ISO (until VyOS 1.3)
-        if: ${{ !env.skip && contains(fromJson('["crux", "equuleus"]'), matrix.version.code) }}
+      - name: Configure and build ISO
+        if: ${{ !env.skip && contains(fromJson('["circinus"]'), matrix.version.code) }}
         working-directory: vyos-build
-        run: |
-          ./configure --architecture ${{ matrix.version.architecture }} --build-by "https://github.com/os-builds" --build-type release --version ${{ matrix.version.number }}
-          sudo make iso
-
-      - name: Configure and build ISO (since VyOS 1.4)
-        if: ${{ !env.skip && contains(fromJson('["sagitta", "circinus"]'), matrix.version.code) }}
-        working-directory: vyos-build
-        run: ./build-vyos-image iso --architecture ${{ matrix.version.architecture }} --build-by "https://github.com/os-builds"
+        run: ./build-vyos-image --architecture ${{ matrix.version.architecture }} --build-by "https://github.com/os-builds" generic
 
       - name: Define filename
         if: ${{ !env.skip }}
@@ -120,7 +87,7 @@ jobs:
 
       - name: Upload ISO
         if: ${{ !env.skip }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ env.filename }}
           path: ${{ env.filename }}.iso
@@ -156,37 +123,11 @@ jobs:
     strategy:
       matrix:
         version:
-          - number: "1.3"
-            architecture: amd64
-            code: equuleus
-            branch: equuleus
-            docker-tag: equuleus
-
-          - number: "1.4"
-            architecture: amd64
-            code: sagitta
-            branch: sagitta
-            docker-tag: sagitta
-
-          # TODO doesn't work
-          #- number: "1.4"
-          #  architecture: arm64
-          #  code: sagitta
-          #  branch: sagitta
-          #  docker-tag: sagitta-arm64
-
           - number: "1.5"
             architecture: amd64
             code: circinus
             branch: current
             docker-tag: current
-
-          # TODO doesn't work
-          #- number: "1.5"
-          #  architecture: arm64
-          #  code: circinus
-          #  branch: current
-          #  docker-tag: current-arm64
 
     steps:
       # if git tag is being processed (for release) terminate execution of unnessesary workflows 
@@ -201,7 +142,7 @@ jobs:
 
       - name: Download a single artifact
         if: ${{ !env.skip }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.filename }}
 
