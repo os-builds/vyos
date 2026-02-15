@@ -62,7 +62,7 @@ jobs:
       options: --privileged --platform=linux/${{ matrix.version.architecture }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # if git tag is being processed (for release) terminate execution of unnessesary workflows 
       - name: "If executed for release: Terminate unnessesary workflows"
