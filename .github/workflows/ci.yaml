@@ -201,7 +201,7 @@ jobs:
 
       - name: Download a single artifact
         if: ${{ !env.skip }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v7
         with:
           name: ${{ env.filename }}
 
